@@ -505,33 +505,32 @@
         // ====== Result ======
 
         function calculateResult() {
-            console.log('📊 開始計算結果...');
-            console.log('  原始答案:', state.answers);
+            
 
             const scores = [0, 0, 0, 0];
             state.answers.forEach((ans, idx) => {
                 if (ans >= 1 && ans <= 4) {
                     scores[ans - 1]++;
-                    console.log(`    Q${idx + 1}: 選擇${ans} → scores[${ans - 1}]++`);
+                    
                 }
             });
 
-            console.log('  累計分數:', scores);
+           
             const maxScore = Math.max(...scores);
-            console.log('  最高分:', maxScore);
+            
 
             const ties = scores.filter(s => s === maxScore).length;
-            console.log('  平手數:', ties);
+            
 
             if (ties > 1) {
                 state.result = state.answers[4];
-                console.log('  🤝 有平手! 使用Q5結果:', state.result);
+                
             } else {
                 state.result = scores.indexOf(maxScore) + 1;
-                console.log('  ✅ 唯一勝者: 選項', state.result);
+                
             }
 
-            console.log('✨ 最終結果:', state.result, '→ 頁碼', 19 + state.result);
+            
         }
 
         // Result page: bottom 10% of a centered 390px-wide frame, split into 4 equal parts
