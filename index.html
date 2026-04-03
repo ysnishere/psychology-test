@@ -206,6 +206,7 @@
         }
 
         function goToPage(pageNum) {
+            console.log(`🔄 進入第 ${pageNum} 頁`);
             document.querySelectorAll('.screen').forEach(s => s.remove());
             if (state.hiddenInput) {
                 state.hiddenInput.remove();
@@ -331,13 +332,17 @@
                     opt.style.cssText = `top:${i * 25}%;left:0;width:100%;height:25%;`;
                     opt.addEventListener('click', () => {
                         const qNum = QUESTION_PAGES[pageNum];
-                        state.answers[qNum - 1] = i + 1;
+                        const optionNum = i + 1;
+                        state.answers[qNum - 1] = optionNum;
                         playSound('click');
-                        console.log(`Q${qNum} = ${i + 1}`, state.answers);
+                        console.log(`📝 Q${qNum} 選擇 ${optionNum} (第${i}個選項) → state.answers[${qNum - 1}] = ${optionNum}`);
+                        console.log(`  當前答案陣列:`, state.answers);
 
                         if (qNum < 5) {
+                            console.log(`  ✓ Q${qNum}/5 完成，進下一題`);
                             setTimeout(() => goToNextPage(), 300);
                         } else {
+                            console.log(`  ✓ 所有5題完成！計算結果...`);
                             calculateResult();
                             setTimeout(() => goToPage(19 + state.result), 500);
                         }
@@ -457,14 +462,33 @@
         // ====== Result ======
 
         function calculateResult() {
+            console.log('📊 開始計算結果...');
+            console.log('  原始答案:', state.answers);
+
             const scores = [0, 0, 0, 0];
-            state.answers.forEach(ans => {
-                if (ans >= 1 && ans <= 4) scores[ans - 1]++;
+            state.answers.forEach((ans, idx) => {
+                if (ans >= 1 && ans <= 4) {
+                    scores[ans - 1]++;
+                    console.log(`    Q${idx + 1}: 選擇${ans} → scores[${ans - 1}]++`);
+                }
             });
+
+            console.log('  累計分數:', scores);
             const maxScore = Math.max(...scores);
+            console.log('  最高分:', maxScore);
+
             const ties = scores.filter(s => s === maxScore).length;
-            state.result = ties > 1 ? state.answers[4] : scores.indexOf(maxScore) + 1;
-            console.log('答案:', state.answers, '分數:', scores, '結果:', state.result);
+            console.log('  平手數:', ties);
+
+            if (ties > 1) {
+                state.result = state.answers[4];
+                console.log('  🤝 有平手! 使用Q5結果:', state.result);
+            } else {
+                state.result = scores.indexOf(maxScore) + 1;
+                console.log('  ✅ 唯一勝者: 選項', state.result);
+            }
+
+            console.log('✨ 最終結果:', state.result, '→ 頁碼', 19 + state.result);
         }
 
         // Result page: bottom 10% of a centered 390px-wide frame, split into 4 equal parts
