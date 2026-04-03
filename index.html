@@ -192,17 +192,49 @@
         const QUESTION_PAGES = { 9: 1, 10: 2, 11: 3, 13: 4, 14: 5 };
         const DOOR_PAGES = [2, 3, 4];
 
-        function init() {
-            // Preload first image to verify assets exist
-            const testImg = new Image();
-            testImg.onload = () => {
-                document.getElementById('loading').classList.add('hidden');
-                goToPage(1);
-            };
-            testImg.onerror = () => {
-                document.getElementById('loadingDetail').textContent = '無法載入圖片，請確認 images/ 資料夾存在';
-            };
-            testImg.src = 'images/1.png';
+        async function preloadImages() {
+            console.log('🖼️ 開始預加載所有圖片...');
+            const promises = [];
+
+            for (let i = 1; i <= 23; i++) {
+                promises.push(new Promise(resolve => {
+                    const img = new Image();
+                    const updateProgress = () => {
+                        const loaded = promises.filter(p => p.status === 'resolved').length;
+                        const percent = Math.round((loaded / 23) * 100);
+                        document.getElementById('loadingDetail').textContent = `載入中... ${percent}%`;
+                    };
+
+                    img.onload = () => {
+                        updateProgress();
+                        resolve();
+                    };
+                    img.onerror = () => {
+                        console.warn(`⚠️ 無法載入 images/${i}.png`);
+                        resolve(); // 繼續，不中斷
+                    };
+                    img.src = `images/${i}.png`;
+                }));
+            }
+
+            await Promise.all(promises);
+            console.log('✅ 所有圖片預加載完成！');
+        }
+
+        async function init() {
+            try {
+                document.getElementById('loadingDetail').textContent = '預加載所有圖片...';
+                await preloadImages();
+
+                document.getElementById('loadingDetail').textContent = '準備完成！';
+                setTimeout(() => {
+                    document.getElementById('loading').classList.add('hidden');
+                    goToPage(1);
+                }, 300);
+            } catch (e) {
+                document.getElementById('loadingDetail').textContent = '載入失敗: ' + e.message;
+                console.error(e);
+            }
         }
 
         function goToPage(pageNum) {
