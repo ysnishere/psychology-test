@@ -143,6 +143,25 @@
 
         .loading.hidden { display: none; }
 
+        .marquee-container {
+            width: 100%;
+            overflow: hidden;
+            margin-top: 12px;
+        }
+
+        .marquee-text {
+            display: inline-block;
+            white-space: nowrap;
+            font-size: 14px;
+            color: #ccc;
+            animation: marquee 15s linear infinite;
+        }
+
+        @keyframes marquee {
+            0% { transform: translateX(100%); }
+            100% { transform: translateX(-100%); }
+        }
+
         .toast {
             position: fixed;
             top: 20px;
@@ -161,7 +180,9 @@
 <body>
     <div class="loading" id="loading">
         <div>正在載入中...</div>
-        <div style="font-size: 14px; margin-top: 10px; color: #ccc;" id="loadingDetail"></div>
+        <div class="marquee-container">
+            <span class="marquee-text">大家好，我是YSN，來自台南國立成功大學工業設計學系，很不幸的，我窮到要自己架測驗網站來賣我跟我夥伴設計的公仔，更不幸的是，你正在測驗的加載頁面，所以要在這裡聽我講廢話，而我要說的是:</span>
+        </div>
     </div>
     <div class="container" id="container"></div>
 
@@ -192,47 +213,25 @@
         const DOOR_PAGES = [2, 3, 4];
 
         async function preloadImages() {
-            console.log('🖼️ 開始預加載所有圖片...');
             const promises = [];
-
             for (let i = 1; i <= 23; i++) {
                 promises.push(new Promise(resolve => {
                     const img = new Image();
-                    const updateProgress = () => {
-                        const loaded = promises.filter(p => p.status === 'resolved').length;
-                        const percent = Math.round((loaded / 23) * 100);
-                        document.getElementById('loadingDetail').textContent = `載入中... ${percent}%`;
-                    };
-
-                    img.onload = () => {
-                        updateProgress();
-                        resolve();
-                    };
-                    img.onerror = () => {
-                        console.warn(`⚠️ 無法載入 images/${i}.png`);
-                        resolve(); // 繼續，不中斷
-                    };
+                    img.onload = resolve;
+                    img.onerror = resolve;
                     img.src = `images/${i}.png`;
                 }));
             }
-
             await Promise.all(promises);
-            console.log('✅ 所有圖片預加載完成！');
         }
 
         async function init() {
             try {
-                document.getElementById('loadingDetail').textContent = '預加載所有圖片...';
                 await preloadImages();
-
-                document.getElementById('loadingDetail').textContent = '準備完成！';
-                setTimeout(() => {
-                    document.getElementById('loading').classList.add('hidden');
-                    goToPage(1);
-                }, 300);
+                document.getElementById('loading').classList.add('hidden');
+                goToPage(1);
             } catch (e) {
-                document.getElementById('loadingDetail').textContent = '載入失敗: ' + e.message;
-                console.error(e);
+                console.error('載入失敗:', e);
             }
         }
 
