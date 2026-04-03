@@ -99,7 +99,7 @@
             font-size: 24px;
             color: #fff;
             font-weight: bold;
-            top: 45%;
+            top: 47.5%;
             left: 50%;
             transform: translate(-50%, -50%);
             pointer-events: none;
@@ -154,12 +154,12 @@
             white-space: nowrap;
             font-size: 14px;
             color: #ccc;
-            animation: marquee 15s linear infinite;
+            animation: marquee 20s linear infinite;
         }
 
         @keyframes marquee {
-            0% { transform: translateX(100%); }
-            100% { transform: translateX(-100%); }
+            0% { transform: translateX(0); }
+            100% { transform: translateX(-50%); }
         }
 
         .toast {
@@ -181,7 +181,7 @@
     <div class="loading" id="loading">
         <div>正在載入中...</div>
         <div class="marquee-container">
-            <span class="marquee-text">大家好，我是YSN，來自台南國立成功大學工業設計學系，很不幸的，我窮到要自己架測驗網站來賣我跟我夥伴設計的公仔，更不幸的是，你正在測驗的加載頁面，所以要在這裡聽我講廢話，而我要說的是:</span>
+            <span class="marquee-text">大家好，我是YSN，來自台南國立成功大學工業設計學系，很不幸的，我窮到要自己架測驗網站來賣我跟我夥伴設計的公仔，更不幸的是，你正在測驗的加載頁面，所以要在這裡聽我講廢話，而我要說的是:大家好，我是YSN，來自台南國立成功大學工業設計學系，很不幸的，我窮到要自己架測驗網站來賣我跟我夥伴設計的公仔，更不幸的是，你正在測驗的加載頁面，所以要在這裡聽我講廢話，而我要說的是:</span>
         </div>
     </div>
     <div class="container" id="container"></div>
