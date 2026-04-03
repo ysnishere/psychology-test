@@ -1,0 +1,514 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>心理測驗</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: 'Arial', sans-serif;
+            overflow: hidden;
+            background: #000;
+        }
+
+        .container {
+            position: relative;
+            width: 100vw;
+            height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .screen {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            display: none;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .screen.active { display: flex; }
+
+        .background-image {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            background-size: contain;
+            background-repeat: no-repeat;
+            background-position: center;
+        }
+
+        .screen.fade-in .background-image {
+            animation: fadeIn 1.5s ease-in;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+
+        .door-image {
+            position: absolute;
+            width: 200px;
+            height: 300px;
+            left: 50%;
+            top: 50%;
+            transform: translate(-50%, -50%);
+            background-size: contain;
+            background-repeat: no-repeat;
+            background-position: center;
+            background-image: url('images/door.png');
+            animation: doorFloat 2s ease-in-out infinite;
+            z-index: 10;
+            pointer-events: none;
+        }
+
+        @keyframes doorFloat {
+            0%, 100% { transform: translate(-50%, -50%) translateY(0px); }
+            50% { transform: translate(-50%, -50%) translateY(-30px); }
+        }
+
+        .interactive-layer {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            cursor: pointer;
+            z-index: 5;
+        }
+
+        .option-area, .icon-area, .start-btn-area {
+            position: absolute;
+            cursor: pointer;
+            z-index: 15;
+        }
+
+        .option-area:hover, .icon-area:hover, .start-btn-area:hover {
+            opacity: 0.8;
+        }
+
+        .name-input-container {
+            position: absolute;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 20;
+            font-size: 24px;
+            color: #fff;
+            font-weight: bold;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            pointer-events: none;
+        }
+
+        .cursor-blink {
+            animation: blink 0.8s infinite;
+        }
+
+        @keyframes blink {
+            0%, 49% { opacity: 1; }
+            50%, 100% { opacity: 0; }
+        }
+
+        .name-on-image {
+            position: absolute;
+            color: #fff;
+            font-size: 24px;
+            font-weight: bold;
+            z-index: 20;
+            text-align: center;
+            top: 47.5%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            pointer-events: none;
+        }
+
+        .loading {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(0,0,0,0.9);
+            padding: 30px;
+            border-radius: 10px;
+            color: #fff;
+            font-size: 18px;
+            z-index: 1000;
+            text-align: center;
+        }
+
+        .loading.hidden { display: none; }
+
+        .toast {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            color: #fff;
+            padding: 15px 20px;
+            border-radius: 8px;
+            z-index: 1001;
+            max-width: 300px;
+        }
+
+        .toast.error { background: rgba(255,0,0,0.8); }
+        .toast.success { background: rgba(0,180,0,0.8); }
+    </style>
+</head>
+<body>
+    <div class="loading" id="loading">
+        <div>正在載入中...</div>
+        <div style="font-size: 14px; margin-top: 10px; color: #ccc;" id="loadingDetail"></div>
+    </div>
+    <div class="container" id="container"></div>
+
+    <script>
+        const state = {
+            currentScreen: null,
+            userName: '',
+            answers: [0, 0, 0, 0, 0],
+            result: null,
+            audio: {},
+            hiddenInput: null
+        };
+
+        const AUDIO = {
+            bgm: 'audio/%E8%83%8C%E6%99%AF%E9%9F%B3%E6%A8%82.mp3',
+            click: 'audio/%E9%BB%9E%E6%93%8A%E5%9B%9E%E9%A5%8B%E8%81%B2.mp3',
+            door: 'audio/%E9%96%8B%E9%96%80%E8%81%B2.mp3',
+            tense: 'audio/%E7%B7%8A%E5%BC%B5%E9%9F%B3%E6%A8%82.mp3',
+            result: 'audio/%E6%8F%AD%E6%9B%89%E5%AE%88%E8%AD%B7%E7%A5%9E.mp3',
+            who: 'audio/who%20are%20you.mp3',
+            whisper: 'audio/%E7%AB%8A%E7%AB%8A%E7%A7%81%E8%AA%9E.mp3',
+            chatter: 'audio/chatter.mp3'
+        };
+
+        const FLOW = [];
+        for (let i = 1; i <= 19; i++) FLOW.push(i);
+
+        const QUESTION_PAGES = { 9: 1, 10: 2, 11: 3, 13: 4, 14: 5 };
+        const DOOR_PAGES = [2, 3, 4];
+
+        function init() {
+            // Preload first image to verify assets exist
+            const testImg = new Image();
+            testImg.onload = () => {
+                document.getElementById('loading').classList.add('hidden');
+                goToPage(1);
+            };
+            testImg.onerror = () => {
+                document.getElementById('loadingDetail').textContent = '無法載入圖片，請確認 images/ 資料夾存在';
+            };
+            testImg.src = 'images/1.png';
+        }
+
+        function goToPage(pageNum) {
+            document.querySelectorAll('.screen').forEach(s => s.remove());
+            if (state.hiddenInput) {
+                state.hiddenInput.remove();
+                state.hiddenInput = null;
+            }
+
+            state.currentScreen = pageNum;
+
+            const screen = document.createElement('div');
+            screen.className = 'screen active';
+            if (pageNum === 12) screen.classList.add('fade-in');
+
+            screen.innerHTML = `<div class="background-image" style="background-image: url('images/${pageNum}.png')"></div>`;
+            document.getElementById('container').appendChild(screen);
+
+            handleAudio(pageNum);
+
+            // Door animation (2,3,4)
+            if (DOOR_PAGES.includes(pageNum)) {
+                const door = document.createElement('div');
+                door.className = 'door-image';
+                screen.appendChild(door);
+            }
+
+            // === Page 1: Start button ===
+            if (pageNum === 1) {
+                const startArea = document.createElement('div');
+                startArea.className = 'start-btn-area';
+                startArea.style.cssText = 'bottom:25%;left:50%;transform:translateX(-50%);width:30%;height:10%;';
+                startArea.addEventListener('click', () => {
+                    playSound('click');
+                    setTimeout(() => goToNextPage(), 200);
+                });
+                screen.appendChild(startArea);
+                return;
+            }
+
+            // === Page 6: auto-advance ===
+            if (pageNum === 6) {
+                const whoAudio = state.audio.who;
+                if (whoAudio) {
+                    whoAudio.addEventListener('ended', () => {
+                        if (state.currentScreen === 6) goToPage(7);
+                    }, { once: true });
+                }
+                setTimeout(() => {
+                    if (state.currentScreen === 6) goToPage(7);
+                }, 5000);
+                return;
+            }
+
+            // === Page 7: Name input with blinking cursor ===
+            if (pageNum === 7) {
+                const container = document.createElement('div');
+                container.className = 'name-input-container';
+
+                const nameSpan = document.createElement('span');
+                nameSpan.id = 'nameDisplayText';
+                container.appendChild(nameSpan);
+
+                const cursor = document.createElement('span');
+                cursor.className = 'cursor-blink';
+                cursor.textContent = '|';
+                container.appendChild(cursor);
+
+                screen.appendChild(container);
+
+                const input = document.createElement('input');
+                input.type = 'text';
+                input.style.cssText = 'position:fixed;top:-100px;left:-100px;opacity:0;pointer-events:none;';
+                document.body.appendChild(input);
+                state.hiddenInput = input;
+
+                const layer = document.createElement('div');
+                layer.className = 'interactive-layer';
+                layer.addEventListener('click', () => input.focus());
+                screen.appendChild(layer);
+
+                setTimeout(() => input.focus(), 100);
+
+                input.addEventListener('input', () => {
+                    nameSpan.textContent = input.value;
+                });
+
+                input.addEventListener('keypress', (e) => {
+                    if (e.key === 'Enter') {
+                        state.userName = input.value || '測試者';
+                        playSound('click');
+                        input.remove();
+                        state.hiddenInput = null;
+                        setTimeout(() => goToPage(8), 300);
+                    }
+                });
+                return;
+            }
+
+            // === Page 8: Show name on image ===
+            if (pageNum === 8) {
+                const nameEl = document.createElement('div');
+                nameEl.className = 'name-on-image';
+                nameEl.textContent = state.userName;
+                screen.appendChild(nameEl);
+
+                const layer = document.createElement('div');
+                layer.className = 'interactive-layer';
+                layer.addEventListener('click', () => {
+                    playSound('click');
+                    setTimeout(() => goToNextPage(), 200);
+                });
+                screen.appendChild(layer);
+                return;
+            }
+
+            // === Question pages ===
+            if (QUESTION_PAGES[pageNum] !== undefined) {
+                const layer = document.createElement('div');
+                layer.className = 'interactive-layer';
+                layer.style.cursor = 'default';
+
+                for (let i = 0; i < 4; i++) {
+                    const opt = document.createElement('div');
+                    opt.className = 'option-area';
+                    opt.style.cssText = `top:${i * 25}%;left:0;width:100%;height:25%;`;
+                    opt.addEventListener('click', () => {
+                        const qNum = QUESTION_PAGES[pageNum];
+                        state.answers[qNum - 1] = i + 1;
+                        playSound('click');
+                        console.log(`Q${qNum} = ${i + 1}`, state.answers);
+
+                        if (qNum < 5) {
+                            setTimeout(() => goToNextPage(), 300);
+                        } else {
+                            calculateResult();
+                            setTimeout(() => goToPage(19 + state.result), 500);
+                        }
+                    });
+                    layer.appendChild(opt);
+                }
+                screen.appendChild(layer);
+                return;
+            }
+
+            // === Result pages (20-23) ===
+            if (pageNum >= 20) {
+                setupResultPage(screen, pageNum);
+                return;
+            }
+
+            // === Regular pages ===
+            const layer = document.createElement('div');
+            layer.className = 'interactive-layer';
+            layer.addEventListener('click', () => {
+                if (pageNum === 4) {
+                    playSound('door');
+                    setTimeout(() => goToNextPage(), 800);
+                    return;
+                }
+                goToNextPage();
+            });
+            screen.appendChild(layer);
+        }
+
+        function goToNextPage() {
+            const idx = FLOW.indexOf(state.currentScreen);
+            if (idx >= 0 && idx < FLOW.length - 1) {
+                goToPage(FLOW[idx + 1]);
+            }
+        }
+
+        // ====== Audio ======
+
+        function handleAudio(pageNum) {
+            if (pageNum >= 20) {
+                stopAllMusic();
+                playSound('result');
+                return;
+            }
+
+            if (pageNum === 5) {
+                stopMusic('tense');
+                stopMusic('who');
+                stopMusic('whisper');
+                if (!state.audio.bgm || state.audio.bgm.paused) {
+                    playMusic('bgm', true);
+                }
+                playSound('chatter');
+                return;
+            }
+
+            if (pageNum === 6) {
+                stopMusic('bgm');
+                stopMusic('tense');
+                stopMusic('whisper');
+                playMusic('who', false);
+                return;
+            }
+
+            if (pageNum === 12) {
+                stopMusic('bgm');
+                stopMusic('tense');
+                playMusic('whisper', false);
+                return;
+            }
+
+            if (pageNum === 18) {
+                stopMusic('bgm');
+                stopMusic('whisper');
+                playMusic('tense', true);
+                return;
+            }
+
+            if (pageNum === 19) return;
+
+            stopMusic('tense');
+            stopMusic('who');
+            stopMusic('whisper');
+            if (!state.audio.bgm || state.audio.bgm.paused) {
+                playMusic('bgm', true);
+            }
+        }
+
+        function playMusic(key, loop) {
+            stopMusic(key);
+            const audio = new Audio(AUDIO[key]);
+            audio.loop = loop;
+            audio.volume = 0.7;
+            audio.play().catch(e => console.log('播放失敗:', key, e));
+            state.audio[key] = audio;
+        }
+
+        function stopMusic(key) {
+            if (state.audio[key]) {
+                state.audio[key].pause();
+                state.audio[key].currentTime = 0;
+                state.audio[key] = null;
+            }
+        }
+
+        function stopAllMusic() {
+            Object.keys(state.audio).forEach(k => stopMusic(k));
+        }
+
+        function playSound(key) {
+            const audio = new Audio(AUDIO[key]);
+            audio.volume = 0.8;
+            audio.play().catch(e => console.log('音效失敗:', key, e));
+        }
+
+        // ====== Result ======
+
+        function calculateResult() {
+            const scores = [0, 0, 0, 0];
+            state.answers.forEach(ans => {
+                if (ans >= 1 && ans <= 4) scores[ans - 1]++;
+            });
+            const maxScore = Math.max(...scores);
+            const ties = scores.filter(s => s === maxScore).length;
+            state.result = ties > 1 ? state.answers[4] : scores.indexOf(maxScore) + 1;
+            console.log('答案:', state.answers, '分數:', scores, '結果:', state.result);
+        }
+
+        // Result page: bottom 10% of a centered 390px-wide frame, split into 4 equal parts
+        function setupResultPage(screen, pageNum) {
+            const actions = [
+                () => { window.open('https://www.instagram.com/create/story/', '_blank'); showToast('已開啟 Instagram', 'success'); },
+                () => { window.open('https://www.threads.net/', '_blank'); showToast('已開啟 Threads', 'success'); },
+                () => window.open('https://shopee.tw/28rlja2sl4', '_blank'),
+                () => resetGame()
+            ];
+
+            const frameContainer = document.createElement('div');
+            frameContainer.style.cssText = 'position:absolute;bottom:0;left:50%;transform:translateX(-50%);width:390px;height:10%;display:flex;z-index:15;';
+
+            for (let i = 0; i < 4; i++) {
+                const area = document.createElement('div');
+                area.className = 'icon-area';
+                area.style.cssText = 'position:relative;flex:1;height:100%;cursor:pointer;';
+                area.addEventListener('click', () => {
+                    playSound('click');
+                    actions[i]();
+                });
+                frameContainer.appendChild(area);
+            }
+            screen.appendChild(frameContainer);
+        }
+
+        function resetGame() {
+            state.answers = [0, 0, 0, 0, 0];
+            state.result = null;
+            state.userName = '';
+            stopAllMusic();
+            goToPage(1);
+        }
+
+        function showToast(msg, type) {
+            const div = document.createElement('div');
+            div.className = `toast ${type}`;
+            div.textContent = msg;
+            document.body.appendChild(div);
+            setTimeout(() => div.remove(), 3000);
+        }
+
+        window.addEventListener('DOMContentLoaded', init);
+    </script>
+</body>
+</html>
