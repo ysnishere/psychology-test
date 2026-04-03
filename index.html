@@ -186,8 +186,7 @@
             chatter: 'audio/chatter.mp3'
         };
 
-        const FLOW = [];
-        for (let i = 1; i <= 19; i++) FLOW.push(i);
+        const FLOW = [1,2,3,4,5,6,8,9,10,11,12,13,14,15,16,17,18,19];
 
         const QUESTION_PAGES = { 9: 1, 10: 2, 11: 3, 13: 4, 14: 5 };
         const DOOR_PAGES = [2, 3, 4];
@@ -281,17 +280,17 @@
                 const whoAudio = state.audio.who;
                 if (whoAudio) {
                     whoAudio.addEventListener('ended', () => {
-                        if (state.currentScreen === 6) goToPage(7);
+                        if (state.currentScreen === 6) goToPage(8);
                     }, { once: true });
                 }
                 setTimeout(() => {
-                    if (state.currentScreen === 6) goToPage(7);
+                    if (state.currentScreen === 6) goToPage(8);
                 }, 5000);
                 return;
             }
 
-            // === Page 7: Name input with blinking cursor ===
-            if (pageNum === 7) {
+            // === Page 8: Name input + confirm (merged from old pages 7 & 8) ===
+            if (pageNum === 8) {
                 const container = document.createElement('div');
                 container.className = 'name-input-container';
 
@@ -329,26 +328,9 @@
                         playSound('click');
                         input.remove();
                         state.hiddenInput = null;
-                        setTimeout(() => goToPage(8), 300);
+                        setTimeout(() => goToNextPage(), 300);
                     }
                 });
-                return;
-            }
-
-            // === Page 8: Show name on image ===
-            if (pageNum === 8) {
-                const nameEl = document.createElement('div');
-                nameEl.className = 'name-on-image';
-                nameEl.textContent = state.userName;
-                screen.appendChild(nameEl);
-
-                const layer = document.createElement('div');
-                layer.className = 'interactive-layer';
-                layer.addEventListener('click', () => {
-                    playSound('click');
-                    setTimeout(() => goToNextPage(), 200);
-                });
-                screen.appendChild(layer);
                 return;
             }
 
